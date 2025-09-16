@@ -16,7 +16,7 @@ echo "Inizio il download dei modelli (verrà eseguito solo se non sono già pres
 ollama pull gpt-oss:20b
 ollama pull nomic-embed-text
 
-echo "Download dei modelli completato. gpt-oss:20b, nomic-embed-text"
+echo "Download dei modelli completato. hf.co/unsloth/gpt-oss-20b-GGUF:F16, nomic-embed-text"
 
 # Riporta il processo del server in primo piano per mantenere il container attivo
 wait $PID

@@ -45,7 +45,8 @@ async def web_search_tool(query: str) -> str:
     print(f"--- TOOL: Eseguo web_search_tool (Query: {query}) ---")
     try:
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, google_search, query, 3)
+        result = await loop.run_in_executor(None, google_search, query, 1)
+        print(result)
         return result
     except Exception as e:
         return f"Errore durante l'esecuzione della ricerca: {str(e)}"
