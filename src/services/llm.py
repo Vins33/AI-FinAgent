@@ -47,6 +47,7 @@ class OllamaService:
     async def generate_content(self, question: str, context: str) -> str:
         prompt = f"""
         Sei un content creator per Instagram. Il tuo stile è informativo, coinvolgente e amichevole.
+        Rispondi in italiano.
         Usando il contesto fornito, crea un post per Instagram che risponda alla domanda originale.
         Il post deve includere:
         1. Un titolo accattivante.
