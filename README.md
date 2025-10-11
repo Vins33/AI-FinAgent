@@ -4,9 +4,6 @@
 
 Questo repository contiene un'applicazione Streamlit + FastAPI per classificare domande/spunti e generare contenuti (es. post per Instagram) usando LLM locali/servizi come Ollama, oltre a servizi di vettorizzazione (Qdrant) e persistenza (Postgres).
 
-Il README originale elenca già la struttura dei file e una nota architetturale importante sull'uso di client asincroni.
-
-Di seguito trovi una versione migliorata e più pratica del README in italiano, con istruzioni di installazione ed esecuzione locali e tramite Docker.
 
 ## Contenuti
 
