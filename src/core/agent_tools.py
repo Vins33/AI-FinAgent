@@ -8,14 +8,10 @@ from langchain.tools import tool
 from pydantic import BaseModel, Field
 
 from src.services.knowledge import google_search
-
-# Importiamo i TUOI servizi esistenti dal tuo codice
 from src.services.llm import OllamaService
 from src.services.vector_store import VectorStoreService
 
 
-# --- 1. Schemi Pydantic (args_schema) ---
-# (Invariati)
 class WebSearchSchema(BaseModel):
     """Schema per il tool di ricerca web."""
     query: str = Field(description="La stringa di ricerca ottimizzata da inviare a Google.")
@@ -27,14 +23,6 @@ class KBReadSchema(BaseModel):
 class KBWriteSchema(BaseModel):
     """Schema per il tool di scrittura nella Knowledge Base."""
     content: str = Field(description="L'informazione testuale o il fatto da salvare e vettorializzare nella KB.")
-
-
-# --- 2. NESSUNA ISTANZA GLOBALE DEI SERVIZI ---
-# ollama_service = OllamaService()        <-- RIMOSSO
-# vector_store_service = VectorStoreService() <-- RIMOSSO
-
-
-# --- 3. Definizione dei Tool ---
 
 @tool(args_schema=WebSearchSchema)
 async def web_search_tool(query: str) -> str:
@@ -60,8 +48,6 @@ async def read_from_kb_tool(query: str) -> str:
     """
     print(f"--- TOOL: Eseguo read_from_kb_tool (Query: {query}) ---")
 
-    # --- ISTANZIAMO I SERVIZI QUI ---
-    # Questo assicura che vivano sull'event loop corretto.
     ollama_cli = OllamaService()
     vector_store_cli = VectorStoreService()
 
@@ -71,9 +57,6 @@ async def read_from_kb_tool(query: str) -> str:
         if not embedding:
             return "Errore: impossibile creare l'embedding per la query."
 
-        # 2. Cerca nel VectorStore (usando il client istanziato ora
-        # Nota: il tuo metodo .search è sync, ma lo chiamiamo con await
-        # perché lo hai definito 'async def' nel tuo file originale.
         context = await vector_store_cli.search(embedding, limit=1)
         return context
     except Exception as e:
@@ -88,20 +71,16 @@ async def write_to_kb_tool(content: str) -> str:
     """
     print(f"--- TOOL: Eseguo write_to_kb_tool (Content: {content[:30]}...) ---")
 
-    # --- ISTANZIAMO I SERVIZI ANCHE QUI ---
     ollama_cli = OllamaService()
     vector_store_cli = VectorStoreService()
 
     try:
-        # 1. Crea l'embedding
         embedding = await ollama_cli.create_embedding(content)
         if not embedding:
             return "Errore: impossibile creare l'embedding per il contenuto."
 
-        # 2. Genera ID
         point_id = uuid.uuid4().int & (1<<63)-1
 
-        # 3. Salva nel VectorStore (usando il client istanziato ora)
         await vector_store_cli.add_context(
             question_id=point_id,
             embedding=embedding,
@@ -111,6 +90,4 @@ async def write_to_kb_tool(content: str) -> str:
     except Exception as e:
         return f"Errore durante la scrittura sul Vector DB: {str(e)}"
 
-
-# Esportiamo la lista di tutti i tool (questo non cambia)
 available_tools_list = [web_search_tool, read_from_kb_tool, write_to_kb_tool]

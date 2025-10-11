@@ -1,6 +1,5 @@
 import streamlit as st
 
-# Configurazione della pagina principale
 st.set_page_config(page_title="Generatore Contenuti AI", page_icon="🤖", layout="wide")
 
 st.title("🤖 Benvenuto nel Generatore di Contenuti AI")
@@ -20,6 +19,10 @@ st.markdown(
     2. **Vai alla pagina `2_Genera_Contenuto`:**
        - Visualizza tutte le domande classificate.
        - Seleziona una domanda per generare un post completo per Instagram, arricchito con informazioni pertinenti.
+
+    23. **Vai alla pagina `3_Chat_con_Agente_Graph`:**
+       - Visualizza Chat con Agente gpt-oss.
+       - Valida le idee dei posat con l'agente.
 
     Usa il menu a sinistra per navigare tra le pagine e iniziare.
     """

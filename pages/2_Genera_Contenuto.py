@@ -7,8 +7,7 @@ BACKEND_URL = "http://app:8000/api"
 st.set_page_config(page_title="Genera Contenuto", layout="wide")
 
 
-# --- FUNZIONI DI UTILITÀ ---
-@st.cache_data(ttl=300)  # Cache per 5 minuti
+@st.cache_data(ttl=300)
 def load_questions_from_backend():
     """Carica tutte le domande dal backend e le restituisce come dizionario."""
     try:
@@ -51,11 +50,8 @@ def display_error(e: httpx.HTTPError):
     else:
         st.error(f"Errore di connessione al backend: Assicurati che sia in esecuzione. Dettagli: {e}")
 
-
-# --- INTERFACCIA UTENTE ---
 st.title("2. Seleziona una Domanda e Genera il Contenuto")
 
-# Inizializzazione dello stato
 if "selected_question_id" not in st.session_state:
     st.session_state.selected_question_id = None
 if "success_message" not in st.session_state:
@@ -67,7 +63,6 @@ if st.session_state.success_message:
 
 all_questions_dict = load_questions_from_backend()
 
-# Pulsante di aggiornamento manuale
 _, col2 = st.columns([3, 1])
 if col2.button("🔄 Aggiorna Lista", use_container_width=True):
     st.cache_data.clear()
@@ -80,7 +75,6 @@ else:
     df_questions = get_display_dataframe(all_questions_dict)
     st.info("Clicca su una riga per selezionare una domanda e vedere le azioni disponibili.")
 
-    # Visualizzazione della tabella
     event = st.dataframe(
         df_questions,
         use_container_width=True,
@@ -93,7 +87,6 @@ else:
         selected_index = event.selection.rows[0]
         st.session_state.selected_question_id = int(df_questions.iloc[selected_index]["id"])
 
-    # Sezione delle azioni per la riga selezionata
     selected_id = st.session_state.selected_question_id
     if selected_id and selected_id in all_questions_dict:
         selected_question_data = all_questions_dict.get(selected_id)

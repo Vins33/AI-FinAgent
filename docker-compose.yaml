@@ -1,11 +1,9 @@
-# in docker-compose.yml
-
 services:
   app:
-    build: . # Usa il Dockerfile principale
+    build: . 
     container_name: research_app
     ports:
-      - "8000:8000" # Espone la porta di FastAPI
+      - "8000:8000" 
     env_file:
       - .env
     depends_on:
@@ -14,19 +12,19 @@ services:
       - ollama
     volumes:
       - ./src:/app/src
-      - ./data:/app/data # Necessario per il salvataggio temporaneo del CSV
+      - ./data:/app/data
     command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
     restart: unless-stopped
 
   streamlit_ui:
-    build: . # Usa lo stesso Dockerfile principale
+    build: . 
     container_name: streamlit_ui
     ports:
-      - "8501:8501" # Espone la porta di Streamlit
+      - "8501:8501" 
     env_file:
       - .env
     depends_on:
-      - app # Streamlit dipende dal backend
+      - app 
     volumes:
       - ./src:/app/src
       - ./data:/app/data

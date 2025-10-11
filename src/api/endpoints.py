@@ -16,9 +16,6 @@ from src.services.database import (
 )
 from src.services.processing import classify_and_store_pipeline, generate_content_pipeline
 
-# --- 2. CONFIGURAZIONE DEL LOGGING ---
-# Aggiungiamo questa configurazione all'inizio del file.
-# Stampa i log nel terminale (console) con un formato chiaro.
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - [%(levelname)s] - %(message)s", handlers=[logging.StreamHandler()]
 )
@@ -26,7 +23,6 @@ logging.basicConfig(
 router = APIRouter()
 
 
-# --- MODELLI DI RISPOSTA (Pydantic) ---
 class QuestionResponse(BaseModel):
     id: int
     question_text: str
@@ -42,14 +38,10 @@ class MessageResponse(BaseModel):
     details: dict | None = None
     content: str | None = None
 
-
-# --- DEPENDENCY ---
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with get_db_session() as db:
         yield db
 
-
-# --- ENDPOINTS CON LOGGING INTEGRATO ---
 
 
 @router.post("/process-csv/", response_model=MessageResponse, status_code=201)
@@ -64,8 +56,7 @@ async def process_csv(file: Annotated[UploadFile, File(...)], db: Annotated[Asyn
         result = await classify_and_store_pipeline(file_path, db)
         return {"message": "Elaborazione CSV completata con successo", "details": result}
     except Exception as e:
-        # --- 3. LOGGING DELL'ERRORE ---
-        # logging.exception cattura e stampa automaticamente l'intero traceback.
+
         logging.exception("ERRORE CRITICO durante l'elaborazione del CSV:")
         raise HTTPException(status_code=500, detail="Si è verificato un errore interno del server.") from e
     finally:
@@ -81,12 +72,9 @@ async def generate_content_endpoint(question_id: int, db: Annotated[AsyncSession
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
-        # --- 3. LOGGING DELL'ERRORE ---
         logging.exception(f"ERRORE CRITICO durante la generazione di contenuto per l'ID {question_id}:")
         raise HTTPException(status_code=500, detail="Si è verificato un errore interno del server.") from e
 
-
-# (gli altri endpoint non hanno blocchi try/except complessi, quindi li lasciamo invariati per ora)
 
 
 @router.get("/questions/", response_model=List[QuestionResponse])

@@ -1,12 +1,9 @@
 import httpx
 import streamlit as st
 
-# --- CONFIGURAZIONE ---
 BACKEND_URL = "http://app:8000/api"
 st.set_page_config(page_title="Carica e Classifica", layout="wide")
 
-
-# --- FUNZIONI DI UTILITÀ ---
 def display_error(e: httpx.HTTPError):
     """Mostra un messaggio di errore dettagliato all'utente."""
     if isinstance(e, httpx.HTTPStatusError):
@@ -19,11 +16,9 @@ def display_error(e: httpx.HTTPError):
         st.error(f"Errore di connessione al backend: Assicurati che sia in esecuzione. Dettagli: {e}")
 
 
-# Inizializza lo stato della sessione per i messaggi di successo
 if "success_message" not in st.session_state:
     st.session_state.success_message = None
 
-# --- INTERFACCIA UTENTE ---
 st.title("1. Carica e Classifica le Domande")
 
 if st.session_state.success_message:
@@ -37,12 +32,10 @@ st.markdown(
 
 with st.form("upload_form", clear_on_submit=True):
     uploaded_file = st.file_uploader("Scegli un file CSV con le colonne 'Title' e 'Body'", type="csv")
-    # CORRETTO: Sostituito il parametro deprecato 'use_container_width'
     submitted = st.form_submit_button(
         "🚀 Avvia Classificazione",
         type="primary",
-        use_container_width=True,  # Lasciamo questo perché è ancora valido per form_submit_button
-    )
+        use_container_width=True,)
 
     if submitted and uploaded_file is not None:
         files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "text/csv")}
