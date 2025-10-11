@@ -205,43 +205,7 @@ Per domande o chiarimenti apri un'issue o inviami un messaggio nel repository.
 ---
 
 Versione: aggiornata il 2025-10-11
----
-.
-├── .env                  # File per le variabili d'ambiente (es. SERPAPI_API_KEY)
-├── .gitignore            # File standard di Git per ignorare file e cartelle
-├── data/
-│   └── Questions.csv     # Dati di input di esempio
-├── docker-compose.yml    # Gestisce tutti i servizi (Streamlit UI, Ollama, Postgres, Qdrant)
-├── Dockerfile            # Costruisce l'immagine Python principale (usata da Streamlit/API)
-├── main.py               # Entrypoint e homepage dell'app multi-pagina Streamlit
-├── ollama_setup/         # <-- Configurazione per l'avvio automatico di Ollama
-│   ├── Dockerfile        #   - Dockerfile personalizzato per il servizio Ollama
-│   └── entrypoint.sh     #   - Script che scarica i modelli necessari all'avvio
-├── pages/                # <-- Directory per le pagine dell'app Streamlit
-│   ├── 1_Carica_e_Classifica.py # Pagina UI per upload e classificazione
-│   └── 2_Genera_Contenuto.py    # Pagina UI per la generazione RAG
-├── postgres_data_host/   # Volume Docker per la persistenza dei dati PostgreSQL
-├── qdrant_data_host/     # Volume Docker per la persistenza dei dati Qdrant
-├── pyproject.toml        # Definizione delle dipendenze di progetto (usato da UV/Poetry)
-├── requirements.txt      # Dipendenze Python (generate da pyproject.toml)
-├── README.md             # Questo file
-└── src/                  # Codice sorgente dell'applicazione
-    ├── api/              # Logica per gli endpoint (chiamati dalla UI)
-    │   ├── __init__.py
-    │   └── endpoints.py
-    ├── core/
-    │   ├── __init__.py
-    │   └── services/     # Servizi core che gestiscono la logica di business
-    │       ├── __init__.py
-    │       ├── database.py       # Aggiornato: Funzioni di utility per Postgres
-    │       ├── knowledge.py      # Riscritto: Gestisce il reperimento info esterne (SerpAPI)
-    │       ├── llm.py            # Gestore per le interazioni con Ollama
-    │       ├── models.py         # Modelli Pydantic per la validazione dei dati
-    │       ├── processing.py     # Riscritto: Logica separata per classificazione e generazione
-    │       └── vector_store.py   # Gestore per le interazioni con Qdrant
-    └── __init__.py
 
----
 
 ## Nota Architetturale: Factory Pattern vs. Singleton (Gestione Event Loop)
 
