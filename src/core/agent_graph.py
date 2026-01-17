@@ -10,7 +10,7 @@ from langgraph.prebuilt import ToolNode
 from src.core.agent_tools import available_tools_list
 from src.core.config import settings
 
-SYSTEM_PROMPT = SYSTEM_PROMPT = """
+SYSTEM_PROMPT = """
 Sei un assistente AI esperto in finanza (equity/credit/macro) e risk-aware.
 Devi rispondere in modo accurato, conciso e tecnico, usando solo informazioni verificabili.
 Se l informazione non è disponibile, dichiaralo esplicitamente e proponi come ottenerla.
