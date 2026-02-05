@@ -18,7 +18,7 @@ secrets.yml
 
 # Prompts configuration (customized)
 src/core/prompts.yaml
-
+k8s/local/all-in-one.yaml
 # Docker volumes
 *docker_volumes/*
 *ollama_data_host/*
@@ -35,3 +35,4 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+*.txt
