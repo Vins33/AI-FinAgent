@@ -1,93 +1,113 @@
-# /app/src/api/endpoints.py
+# src/api/endpoints.py
+"""FastAPI API endpoints."""
 
-import logging  # <-- 1. Importiamo il modulo di logging
-import os
-import shutil
-from typing import Annotated, AsyncGenerator, List
+import logging
+from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.database import (
-    get_all_questions,
-    get_db_session,
-    reset_question_content,
+    AsyncSessionLocal,
+    add_message,
+    create_conversation,
+    get_conversations,
+    get_messages,
 )
-from src.services.processing import classify_and_store_pipeline, generate_content_pipeline
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - [%(levelname)s] - %(message)s", handlers=[logging.StreamHandler()]
+    level=logging.INFO,
+    format="%(asctime)s - [%(levelname)s] - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 
 router = APIRouter()
 
 
-class QuestionResponse(BaseModel):
+# --- Pydantic Schemas ---
+
+
+class ConversationCreate(BaseModel):
+    """Schema for creating a conversation."""
+
+    title: str = "Nuova conversazione"
+
+
+class ConversationResponse(BaseModel):
+    """Schema for conversation response."""
+
     id: int
-    question_text: str
-    classification: str
-    generated_content: str | None
+    title: str
 
     class Config:
         from_attributes = True
 
 
+class MessageCreate(BaseModel):
+    """Schema for creating a message."""
+
+    role: str
+    content: str
+
+
 class MessageResponse(BaseModel):
-    message: str
-    details: dict | None = None
-    content: str | None = None
+    """Schema for message response."""
+
+    id: int
+    conversation_id: int
+    role: str
+    content: str
+
+    class Config:
+        from_attributes = True
+
+
+# --- Dependency ---
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with get_db_session() as db:
-        yield db
+    """Dependency that provides a database session."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
-
-@router.post("/process-csv/", response_model=MessageResponse, status_code=201)
-async def process_csv(file: Annotated[UploadFile, File(...)], db: Annotated[AsyncSession, Depends(get_db)]) -> dict:
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Il file deve essere in formato CSV.")
-
-    file_path = f"./data/{file.filename}"
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        result = await classify_and_store_pipeline(file_path, db)
-        return {"message": "Elaborazione CSV completata con successo", "details": result}
-    except Exception as e:
-
-        logging.exception("ERRORE CRITICO durante l'elaborazione del CSV:")
-        raise HTTPException(status_code=500, detail="Si è verificato un errore interno del server.") from e
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+db_dependency = Depends(get_db)
 
 
-@router.post("/generate-content/{question_id}", response_model=MessageResponse)
-async def generate_content_endpoint(question_id: int, db: Annotated[AsyncSession, Depends(get_db)]) -> dict:
-    try:
-        content = await generate_content_pipeline(question_id, db)
-        return {"message": "Contenuto generato con successo", "content": content}
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    except Exception as e:
-        logging.exception(f"ERRORE CRITICO durante la generazione di contenuto per l'ID {question_id}:")
-        raise HTTPException(status_code=500, detail="Si è verificato un errore interno del server.") from e
+# --- Endpoints ---
 
 
+@router.get("/conversations/", response_model=list[ConversationResponse])
+async def list_conversations(session: AsyncSession = db_dependency):
+    """Get all conversations."""
+    return await get_conversations(session)
 
-@router.get("/questions/", response_model=List[QuestionResponse])
-async def get_questions_endpoint(
-    db: Annotated[AsyncSession, Depends(get_db)],
+
+@router.post("/conversations/", response_model=ConversationResponse)
+async def new_conversation(
+    data: ConversationCreate, session: AsyncSession = db_dependency
 ):
-    questions = await get_all_questions(db)
-    return questions
+    """Create a new conversation."""
+    return await create_conversation(session, data.title)
 
 
-@router.post("/questions/{question_id}/reset-content", response_model=MessageResponse)
-async def reset_content_endpoint(question_id: int, db: Annotated[AsyncSession, Depends(get_db)]) -> dict:
-    success = await reset_question_content(db, question_id)
-    if success:
-        return {"message": f"Contenuto per la domanda {question_id} resettato."}
-    raise HTTPException(status_code=404, detail="Domanda non trovata.")
+@router.get(
+    "/conversations/{conv_id}/messages/", response_model=list[MessageResponse]
+)
+async def list_messages(conv_id: int, session: AsyncSession = db_dependency):
+    """Get all messages for a conversation."""
+    return await get_messages(session, conv_id)
+
+
+@router.post(
+    "/conversations/{conv_id}/messages/", response_model=MessageResponse
+)
+async def new_message(
+    conv_id: int, data: MessageCreate, session: AsyncSession = db_dependency
+):
+    """Add a message to a conversation."""
+    return await add_message(session, conv_id, data.role, data.content)

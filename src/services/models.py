@@ -1,5 +1,5 @@
-from sqlalchemy import Column, DateTime, Integer, Text, func
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import declarative_base, relationship
 
 # 1. Declarative Base
 #    Tutte le classi modello che creeremo erediteranno da questa classe base.
@@ -7,43 +7,21 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 
-# 2. Modello della Tabella
-#    Questa classe rappresenta la tabella `classified_questions` nel database.
-class ClassifiedQuestion(Base):
-    """
-    Modello ORM per rappresentare una domanda classificata e il suo
-    contenuto generato nel database.
-    """
-
-    __tablename__ = "classified_questions1"
-
-    # --- Colonne della Tabella ---
-
-    # ID: Chiave primaria, intero, auto-incrementante
-    id = Column(Integer, primary_key=True, index=True)
-
-    # Testo della domanda originale inserita dall'utente
-    question_text = Column(Text, nullable=False)
-
-    # Classificazione ottenuta dal modello (es. "Generale", "Tecnica", "Commerciale")
-    classification = Column(Text, nullable=False, index=True)
-
-    # Contenuto generato dalla pipeline in risposta alla domanda
-    # Usiamo 'Text' invece di 'String' perché il contenuto può essere lungo.
-    # 'nullable=True' significa che può essere vuoto (ad esempio, prima della generazione).
-    generated_content = Column(Text, nullable=True)
-
-    # Timestamp di creazione: si popola automaticamente con la data e ora correnti
-    # quando un record viene creato per la prima volta.
+# Modello per le conversazioni dell'agente finanziario
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id = Column(Integer, primary_key=True)
+    title = Column(String, default="Nuova conversazione")
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
-
-    # Timestamp di aggiornamento: si aggiorna automaticamente ogni volta che
-    # il record viene modificato.
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
 
-    def __repr__(self) -> str:
-        """
-        Rappresentazione "leggibile" dell'oggetto, utile per il debug.
-        Esempio: <ClassifiedQuestion(id=1, classification='Generale')>
-        """
-        return f"<ClassifiedQuestion(id={self.id}, classification='{self.classification}')>"
+
+class Message(Base):
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"))
+    role = Column(String)  # "user" o "agent"
+    content = Column(Text)
+    timestamp = Column(DateTime, server_default=func.now(), nullable=False)
+    conversation = relationship("Conversation", back_populates="messages")

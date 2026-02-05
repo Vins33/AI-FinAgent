@@ -1,4 +1,5 @@
-# /app/src/services/database.py - VERSIONE COMPLETAMENTE ASINCRONA
+# src/services/database.py
+"""Async database service using SQLAlchemy 2.0."""
 
 import contextlib
 
@@ -6,66 +7,108 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.core.config import settings
-from src.services.models import ClassifiedQuestion
+from src.services.models import Base, Conversation, Message
 
-# --- Unica Configurazione Asincrona ---
-# Rimuoviamo create_engine, SessionLocal e tutto il blocco sincrono.
-async_engine = create_async_engine(settings.DATABASE_URL)
-AsyncSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=async_engine, class_=AsyncSession)
+# Async Engine and Session
+async_engine = create_async_engine(settings.DATABASE_URL, echo=False)
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
 
 
-# Unico gestore di sessione, asincrono
 @contextlib.asynccontextmanager
 async def get_db_session():
-    async_db = AsyncSessionLocal()
-    try:
-        yield async_db
-    finally:
-        await async_db.close()
+    """Async context manager for database sessions."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
-# --- Funzioni di Interazione DB (TUTTE ASINCRONE) ---
-# Nota: usiamo la sintassi moderna di SQLAlchemy 2.0 con select()
+async def init_db():
+    """Initialize database tables."""
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
-async def save_question(session: AsyncSession, question_text: str, classification: str) -> ClassifiedQuestion:
-    """Salva una domanda classificata nel DB in modo asincrono."""
-    db_question = ClassifiedQuestion(question_text=question_text, classification=classification)
-    session.add(db_question)
+# --- Conversation CRUD ---
+
+
+async def create_conversation(
+    session: AsyncSession, title: str = "Nuova conversazione"
+) -> Conversation:
+    """Create a new conversation."""
+    conv = Conversation(title=title)
+    session.add(conv)
     await session.commit()
-    await session.refresh(db_question)
-    return db_question
+    await session.refresh(conv)
+    return conv
 
 
-async def update_question_content(session: AsyncSession, question_id: int, content: str):
-    """Aggiorna il contenuto generato per una domanda esistente in modo asincrono."""
-    result = await session.execute(select(ClassifiedQuestion).filter(ClassifiedQuestion.id == question_id))
-    db_question = result.scalars().first()
-
-    if db_question:
-        db_question.generated_content = content
-        await session.commit()
+async def get_conversations(session: AsyncSession) -> list[Conversation]:
+    """Get all conversations ordered by update time."""
+    result = await session.execute(
+        select(Conversation).order_by(Conversation.updated_at.desc())
+    )
+    return list(result.scalars().all())
 
 
-async def get_question_by_id(session: AsyncSession, question_id: int) -> ClassifiedQuestion | None:
-    """Recupera una domanda per ID in modo asincrono."""
-    result = await session.execute(select(ClassifiedQuestion).filter(ClassifiedQuestion.id == question_id))
+async def get_conversation(
+    session: AsyncSession, conv_id: int
+) -> Conversation | None:
+    """Get a single conversation by ID."""
+    result = await session.execute(
+        select(Conversation).filter(Conversation.id == conv_id)
+    )
     return result.scalars().first()
 
 
-async def get_all_questions(session: AsyncSession) -> list[ClassifiedQuestion]:
-    """Recupera tutte le domande in modo asincrono."""
-    result = await session.execute(select(ClassifiedQuestion).order_by(ClassifiedQuestion.id.desc()))
-    return result.scalars().all()
+async def delete_conversation(session: AsyncSession, conv_id: int) -> bool:
+    """Delete a conversation by ID."""
+    conv = await get_conversation(session, conv_id)
+    if conv:
+        await session.delete(conv)
+        await session.commit()
+        return True
+    return False
 
 
-async def reset_question_content(session: AsyncSession, question_id: int) -> bool:
-    """Resetta il contenuto di una domanda in modo asincrono."""
-    result = await session.execute(select(ClassifiedQuestion).filter(ClassifiedQuestion.id == question_id))
-    db_question = result.scalars().first()
+# --- Message CRUD ---
 
-    if db_question:
-        db_question.generated_content = None
+
+async def add_message(
+    session: AsyncSession, conv_id: int, role: str, content: str
+) -> Message:
+    """Add a message to a conversation."""
+    msg = Message(conversation_id=conv_id, role=role, content=content)
+    session.add(msg)
+    await session.commit()
+    await session.refresh(msg)
+    return msg
+
+
+async def get_messages(session: AsyncSession, conv_id: int) -> list[Message]:
+    """Get all messages for a conversation."""
+    result = await session.execute(
+        select(Message)
+        .filter(Message.conversation_id == conv_id)
+        .order_by(Message.timestamp)
+    )
+    return list(result.scalars().all())
+
+
+async def update_conversation_title(
+    session: AsyncSession, conv_id: int, title: str
+) -> bool:
+    """Update the title of a conversation."""
+    conv = await get_conversation(session, conv_id)
+    if conv:
+        conv.title = title
         await session.commit()
         return True
     return False

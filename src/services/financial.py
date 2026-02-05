@@ -1,14 +1,16 @@
+# src/services/financial.py
+"""Financial analysis service using yfinance."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yfinance as yf
 from pydantic import BaseModel, Field
 
-# ============================
-# 1) FUNZIONI DI SCORING
-# ============================
+# --- Scoring Functions ---
 
-def score_pe(value: Optional[float]) -> int:
+
+def score_pe(value: float | None) -> int:
+    """Score P/E ratio."""
     if value is None:
         return 0
     if value < 15:
@@ -20,7 +22,8 @@ def score_pe(value: Optional[float]) -> int:
     return 2
 
 
-def score_roe(value: Optional[float]) -> int:
+def score_roe(value: float | None) -> int:
+    """Score ROE percentage."""
     if value is None:
         return 0
     if value > 20:
@@ -30,7 +33,8 @@ def score_roe(value: Optional[float]) -> int:
     return 3
 
 
-def score_debt_equity(value: Optional[float]) -> int:
+def score_debt_equity(value: float | None) -> int:
+    """Score Debt/Equity ratio."""
     if value is None:
         return 0
     if value < 1:
@@ -40,7 +44,8 @@ def score_debt_equity(value: Optional[float]) -> int:
     return 2
 
 
-def score_beta(value: Optional[float]) -> int:
+def score_beta(value: float | None) -> int:
+    """Score Beta."""
     if value is None:
         return 0
     if 0.8 <= value <= 1.2:
@@ -52,7 +57,8 @@ def score_beta(value: Optional[float]) -> int:
     return 2
 
 
-def score_dividend_yield(value: Optional[float]) -> int:
+def score_dividend_yield(value: float | None) -> int:
+    """Score Dividend Yield."""
     if value is None:
         return 0
     if value > 0.03:
@@ -62,7 +68,8 @@ def score_dividend_yield(value: Optional[float]) -> int:
     return 3
 
 
-def score_revenue_growth(value: Optional[float]) -> int:
+def score_revenue_growth(value: float | None) -> int:
+    """Score Revenue Growth."""
     if value is None:
         return 0
     if value > 0.10:
@@ -72,7 +79,8 @@ def score_revenue_growth(value: Optional[float]) -> int:
     return 2
 
 
-def score_ev_ebitda(value: Optional[float]) -> int:
+def score_ev_ebitda(value: float | None) -> int:
+    """Score EV/EBITDA."""
     if value is None:
         return 0
     if value < 8:
@@ -82,11 +90,9 @@ def score_ev_ebitda(value: Optional[float]) -> int:
     return 2
 
 
-# ============================
-# 2) PESI DEGLI INDICATORI
-# ============================
+# --- Indicator Weights ---
 
-_WEIGHTS: Dict[str, float] = {
+WEIGHTS: dict[str, float] = {
     "pe": 0.15,
     "roe": 0.20,
     "de": 0.15,
@@ -97,14 +103,13 @@ _WEIGHTS: Dict[str, float] = {
 }
 
 
-# ============================
-# 3) LOGICA DI ANALISI (SYNC)
-# ============================
+# --- Analysis Function ---
 
-def _analyze_stock_sync(ticker: str) -> Dict[str, Any]:
+
+def analyze_stock_sync(ticker: str) -> dict[str, Any]:
     """
-    Esegue l'analisi fondamentale semplificata del titolo tramite yfinance
-    e calcola uno score pesato con output BUY/HOLD/SELL.
+    Perform simplified fundamental analysis using yfinance.
+    Returns weighted score with BUY/HOLD/SELL decision.
     """
     stock = yf.Ticker(ticker)
     info = stock.info or {}
@@ -117,7 +122,7 @@ def _analyze_stock_sync(ticker: str) -> Dict[str, Any]:
     revenue_growth = info.get("revenueGrowth")
     evebitda = info.get("enterpriseToEbitda")
 
-    scores: Dict[str, float] = {
+    scores: dict[str, float] = {
         "pe": score_pe(pe),
         "roe": score_roe((roe * 100) if roe is not None else None),
         "de": score_debt_equity(de),
@@ -127,7 +132,7 @@ def _analyze_stock_sync(ticker: str) -> Dict[str, Any]:
         "evebitda": score_ev_ebitda(evebitda),
     }
 
-    total_score = sum(scores[k] * _WEIGHTS[k] for k in scores)
+    total_score = sum(scores[k] * WEIGHTS[k] for k in scores)
 
     if total_score >= 7.5:
         decision = "BUY"
@@ -148,16 +153,16 @@ def _analyze_stock_sync(ticker: str) -> Dict[str, Any]:
             "enterpriseToEbitda": evebitda,
         },
         "scores": scores,
-        "weights": _WEIGHTS,
+        "weights": WEIGHTS,
         "total_score": round(float(total_score), 2),
         "decision": decision,
     }
 
 
-# ============================
-# 4) TOOL (ASYNC) - LANGCHAIN
-# ============================
+# --- Tool Schema ---
+
 
 class StockAnalysisSchema(BaseModel):
-    """Schema per il tool di analisi fondamentale/score del titolo."""
-    ticker: str = Field(description="Ticker del titolo (es. AAPL, MSFT, NVDA).")
+    """Schema for stock analysis tool."""
+
+    ticker: str = Field(description="Stock ticker (e.g., AAPL, MSFT, NVDA).")
