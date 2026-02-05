@@ -100,6 +100,68 @@ make deploy-dev     # Deploy su K8s dev
 make deploy-prod    # Deploy su K8s prod
 ```
 
+## Test Kubernetes locale con Kind
+
+Per testare il deploy Kubernetes in locale, puoi usare [Kind](https://kind.sigs.k8s.io/) (Kubernetes in Docker):
+
+### Installazione Kind e kubectl
+
+```bash
+# Installa Kind
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+
+# Installa kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+```
+
+### Creazione cluster e deploy
+
+```bash
+# Crea cluster Kind
+kind create cluster --config kind-config.yaml
+
+# Build e carica l'immagine nel cluster
+docker build -t classifier-app:latest .
+kind load docker-image classifier-app:latest --name financial-agent-local
+
+# Deploy all-in-one (app + postgres + qdrant)
+kubectl apply -f k8s/local/all-in-one.yaml
+
+# Verifica pods
+kubectl get pods -n financial-agent-local
+
+# Accedi all'applicazione via port-forward
+kubectl port-forward -n financial-agent-local svc/financial-agent 8888:80
+# Apri http://localhost:8888
+```
+
+### Test health checks
+
+```bash
+curl http://localhost:8888/health/live   # Liveness probe
+curl http://localhost:8888/health/ready  # Readiness probe
+```
+
+### Comandi utili
+
+```bash
+# Logs dell'applicazione
+kubectl logs -n financial-agent-local -l app=financial-agent -f
+
+# Stato di tutti i componenti
+kubectl get all -n financial-agent-local
+
+# Descrivi un pod (per debug)
+kubectl describe pod -n financial-agent-local -l app=financial-agent
+
+# Elimina il cluster quando hai finito
+kind delete cluster --name financial-agent-local
+```
+
 ## Struttura del progetto
 
 ```
