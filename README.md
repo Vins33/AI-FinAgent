@@ -1,229 +1,295 @@
-```
+# Agente Finanziario - Chat
 
-# Generatore di Contenuti AI (classifier)
+Applicazione web per chattare con un agente finanziario AI basato su LangGraph, con supporto per analisi di titoli, ricerca web e knowledge base vettoriale.
 
-Questo repository contiene un'applicazione Streamlit + FastAPI per classificare domande/spunti e generare contenuti (es. post per Instagram) usando LLM locali/servizi come Ollama, oltre a servizi di vettorizzazione (Qdrant) e persistenza (Postgres).
+![WhatsApp-style UI](https://img.shields.io/badge/UI-WhatsApp%20Style-25D366?style=flat-square&logo=whatsapp)
+![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python)
+![NiceGUI](https://img.shields.io/badge/Framework-NiceGUI-00A0E4?style=flat-square)
+![LangGraph](https://img.shields.io/badge/Agent-LangGraph-FF6B6B?style=flat-square)
 
+## Funzionalità principali
 
-## Contenuti
+- 💬 **Chat con agente finanziario AI** (LangGraph + Ollama) con checkpointing PostgreSQL
+- 📊 **Analisi fondamentale titoli** (P/E, ROE, D/E, Beta, Dividend Yield, EV/EBITDA)
+- 🔍 **Ricerca web integrata** (SerpAPI/Google)
+- 📚 **Knowledge Base vettoriale** (Qdrant) per memoria a lungo termine
+- 💾 **Persistenza conversazioni** (PostgreSQL + LangGraph AsyncPostgresSaver)
+- 🎨 **UI moderna WhatsApp-style** con NiceGUI (dark theme, angoli smussati, responsive)
+- ⚙️ **Prompt configurabili** via YAML
+- 🔧 **LLM configurabile** (context window, temperatura, keep-alive)
 
-- Descrizione breve
-- Requisiti
-- Installazione (locale)
-- Esecuzione (locale)
-- Esecuzione con Docker Compose
-- Struttura del progetto
-- Dettagli architetturali importanti
-- Contributi e contatti
+## Screenshot
 
-## Descrizione
+L'interfaccia è ispirata a WhatsApp con:
+- Sidebar con lista conversazioni e ricerca
+- Header con avatar e stato online
+- Bolle messaggi arrotondate con colori distinti
+- Input floating centrato
+- Tabelle markdown con angoli smussati
 
-Applicazione web per:
+## Stack tecnologico
 
-- Caricare file CSV contenenti domande/spunti
-- Classificare e memorizzare le domande in un database
-- Generare contenuti (post) basati sulle domande classificate
-- Offrire una UI Streamlit multi-pagina (caricamento, classificazione, generazione, chat agente)
-
-Il backend espone inoltre un'API FastAPI per l'interazione programmatica.
+| Componente | Tecnologia |
+|------------|------------|
+| **Frontend** | NiceGUI 3.6+ (async, integrato con FastAPI) |
+| **Backend** | FastAPI (async) |
+| **Database** | PostgreSQL 16 + SQLAlchemy 2.0 (async + asyncpg) |
+| **Vector Store** | Qdrant |
+| **LLM** | Ollama (locale) - modello: gpt-oss:20b |
+| **Agent Framework** | LangGraph + LangChain |
+| **Checkpointing** | LangGraph AsyncPostgresSaver |
 
 ## Requisiti
 
-- Python 3.12 raccomandato
-- Docker & Docker Compose (opzionale, consigliato per eseguire Ollama e servizi di vettorizzazione)
-- Chiavi/API opzionali: SERPAPI (se usi SerpAPI nelle impostazioni), accesso ai modelli Ollama se richiesto
+- Python 3.12+
+- Docker e Docker Compose
+- GPU NVIDIA (consigliato per Ollama)
 
-## Installazione (locale)
+## Installazione
 
-1. Crea e attiva un virtual environment (consigliato):
+### Con Docker Compose (consigliato)
 
 ```bash
-python -m venv .venv
+# Clona il repository
+git clone <repo-url>
+cd classifier
+
+# Crea il file .env
+cp .env.exemple .env
+# Modifica .env con le tue configurazioni
+
+# Avvia tutti i servizi
+docker compose up --build
+```
+
+L'applicazione sarà disponibile su `http://localhost:8000`
+
+### Sviluppo locale
+
+```bash
+# Crea ambiente virtuale con uv
+uv venv
 source .venv/bin/activate
+
+# Installa dipendenze
+uv pip install -r requirements.txt
+
+# Avvia l'applicazione
+python -m uvicorn src.main:fastapi_app --host 0.0.0.0 --port 8000 --reload
 ```
-
-2. Installa dipendenze:
-
-```bash
-pip install -r requirements.txt
-```
-```bash
-uv sync
-```
-3. Crea un file `.env` nella root del progetto (es. per SERPAPI_API_KEY o altre variabili). Un esempio minimo:
-
-```env
-# SERPAPI_API_KEY=your_api_key_here
-```
-
-## Esecuzione (locale)
-
-1. Avvia l'API FastAPI (necessario se vuoi usare gli endpoint REST locali):
-
-```bash
-uvicorn src.main:app --reload --port 8000
-```
-
-2. Avvia l'interfaccia Streamlit (UI principale):
-
-```bash
-streamlit run streamlit_app.py
-```
-
-Note:
-- Prima dell'avvio, assicurati che i servizi esterni (Ollama, Qdrant, Postgres) siano raggiungibili se li usi in modalità remota o tramite Docker.
-
-## Esecuzione con Docker Compose (consigliato per ambiente integrato)
-
-Se vuoi avviare tutto lo stack (Streamlit UI, Ollama, Postgres, Qdrant, ecc.):
-
-```bash
-docker-compose up --build
-```
-
-I servizi definiti in `docker-compose.yaml` gestiranno i volumi per Postgres e Qdrant (`postgres_data_host`, `qdrant_data_host`).
 
 ## Struttura del progetto
 
-Le parti principali del progetto:
-
-- `streamlit_app.py` - entrypoint dell'interfaccia Streamlit (menu e istruzioni)
-- `pages/` - pagine specifiche per Streamlit (carica/classifica, genera contenuto, chat agente)
-- `src/` - codice sorgente Python
-  - `src/api/` - router e endpoint FastAPI
-  - `src/core/services/` - servizi per DB, LLM, vettorizzazione
-  - `src/services/` - (nel progetto esiste `src/services` con DB e models usati dall'API)
-- `requirements.txt` - dipendenze Python
-- `docker-compose.yml` e `Dockerfile` - per il deployment containerizzato
-
-## Architettura del progetto
-
-La seguente sezione descrive l'architettura ad alto livello, i componenti principali e come comunicano tra loro.
-
-Componenti principali (overview):
-
-- UI (Streamlit): pagina multi-sezione per upload, gestione dataset, classificazione e generazione dei contenuti.
-- API (FastAPI): espone endpoint usati dalla UI o da client esterni per operazioni CRUD, classificazione e generazione.
-- Servizi LLM (Ollama): modello locale o remoto che genera testi e risposte alle richieste di RAG.
-- Vector Store (Qdrant): archivio vettoriale per retrieval e RAG.
-- Database relazionale (Postgres): persistenza delle risorse strutturate (domande, metadati, storico).
-
-Flusso semplificato delle operazioni:
-
-1. L'utente carica un CSV tramite la UI Streamlit (`pages/1_Carica_e_Classifica.py`).
-2. La UI invia i dati all'API FastAPI (`src/api/endpoints.py`) o direttamente ai servizi locali per la pre-elaborazione.
-3. Il servizio di processing (`src/core/services/processing.py`) normalizza e classifica le domande; salva i risultati in Postgres (`src/core/services/database.py`) e crea embedding inviandoli al vector store (`src/core/services/vector_store.py`).
-4. Quando un utente richiede generazione, la UI chiama l'API o il servizio LLM (`src/core/services/llm.py`) che può usare Ollama localmente o un servizio remoto.
-5. Per RAG, il sistema esegue retrieval su Qdrant (via `vector_store.py`) e passa i contesti rilevanti al modello LLM.
-
-Diagramma testuale dei componenti:
-
 ```
-[ Streamlit UI ] <--HTTP/REST--> [ FastAPI ]
-    |                             |
-    |                             +--> [ Processing Service (processing.py) ]
-    |                             |         |
-    |                             |         +--> [ Postgres ]
-    |                             |         +--> [ Qdrant Vector Store ]
-    |                             |
-    +--> [Pages: 1_Carica_e_Classifica, 2_Genera_Contenuto, 3_Chat]    
-                              |
-                              +--> [LLM: Ollama via llm.py]
+classifier/
+├── src/
+│   ├── __init__.py
+│   ├── main.py                 # Entry point FastAPI + NiceGUI
+│   ├── api/
+│   │   ├── __init__.py
+│   │   └── endpoints.py        # REST API endpoints
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── config.py           # Configurazione LLM e app (pydantic-settings)
+│   │   ├── prompts.py          # Loader prompts da YAML
+│   │   ├── prompts.yaml        # Tutti i prompts configurabili
+│   │   ├── agent_graph.py      # LangGraph agent con checkpointing
+│   │   └── agent_tools.py      # Tool LangChain (web, kb, stocks)
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── database.py         # SQLAlchemy async + CRUD
+│   │   ├── financial.py        # Analisi titoli (yfinance)
+│   │   ├── knowledge.py        # Ricerca web (SerpAPI)
+│   │   ├── llm.py              # Servizio Ollama
+│   │   ├── models.py           # Modelli SQLAlchemy (Conversation, Message)
+│   │   └── vector_store.py     # Servizio Qdrant
+│   └── ui/
+│       ├── __init__.py
+│       ├── app.py              # NiceGUI app entry
+│       ├── components/
+│       │   ├── __init__.py
+│       │   ├── chat.py         # ChatMessage, ChatInput, ChatContainer
+│       │   └── sidebar.py      # ConversationList con rename/delete
+│       └── pages/
+│           ├── __init__.py
+│           └── chat_page.py    # Pagina chat principale
+├── data/                       # Dati esempio
+├── ollama_setup/               # Setup Ollama Docker
+├── Dockerfile
+├── docker-compose.yaml
+├── requirements.txt
+├── pyproject.toml
+└── .env
+└── .env
 ```
 
-Mappatura file -> responsabilità (sintetica):
+## Configurazione
 
-- `streamlit_app.py` - gestione layout, navigazione e pagine Streamlit
-- `pages/1_Carica_e_Classifica.py` - upload CSV, visualizzazione e trigger di classificazione
-- `pages/2_Genera_Contenuto.py` - selezione elementi e generazione di post tramite LLM
-- `pages/3_Chat_con_Agente_Graph.py` - chat con agente e validazione idee (se presente)
-- `src/api/endpoints.py` - definizione router e endpoint REST
-- `src/main.py` - avvio FastAPI e lifecycle (creazione tabelle DB)
-- `src/core/services/database.py` - funzioni di accesso e gestione Postgres
-- `src/core/services/processing.py` - pipeline di pulizia, classificazione e orchestrazione embedding
-- `src/core/services/vector_store.py` - integrazione con Qdrant (crea/ricerca embedding)
-- `src/core/services/llm.py` - interfaccia verso Ollama o provider LLM
-- `ollama_setup/` - Dockerfile e script per scaricare e predisporre modelli locali
+### Variabili ambiente (.env)
 
-Note su deployment e scaling:
+```env
+# PostgreSQL
+POSTGRES_USER=myuser
+POSTGRES_PASSWORD=mypassword
+POSTGRES_DB=instagram_content_db
+DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}
 
-- In produzione è preferibile separare i servizi (UI, API, DB, Qdrant, Ollama) in container distinti e usare risorse dedicate.
-- Il vector store (Qdrant) e Postgres devono essere persistenti (volumi Docker già previsti).
-- Per carichi elevati, servire il backend FastAPI con più worker (uvicorn/gunicorn) e separare le code di elaborazione (ad es. Celery/RQ) per attività pesanti come l'embedding.
+# Servizi
+OLLAMA_BASE_URL=http://ollama:11434
+QDRANT_HOST=qdrant
+QDRANT_PORT=6333
 
-## Note architetturali importanti
+# Modelli
+EMBEDDING_MODEL_NAME=nomic-embed-text
+LLM_MODEL_NAME=gpt-oss:20b
 
-1. Event loop e client asincroni
-
-    Nell'app usiamo componenti asincroni (`httpx.AsyncClient`, `asyncpg`, ecc.). È importante non creare client asincroni globali come singole istanze condivise (Singleton) perché possono agganciarsi a un event loop specifico e causare errori tipo "Event loop is closed" quando Streamlit o LangGraph eseguono chiamate annidate. Per questo motivo il progetto adotta il Factory Pattern: i client asincroni vengono creati all'interno delle funzioni che li utilizzano e distrutti al termine della chiamata.
-
-2. Persistenza e vettorizzazione
-
-    - Postgres è usato per persistere dati strutturati (domande, metadati).
-    - Qdrant è usato come vector store per retrieval e RAG.
-
-3. Ollama e modelli locali
-
-    L'integrazione con Ollama è configurata per scaricare e usare modelli locali quando possibile (vedi `ollama_setup/` con Dockerfile e `entrypoint.sh`). Questo facilita l'esecuzione offline del modello.
-
-## Dati d'esempio
-
-- `data/Questions.csv` è un esempio di input con domande/spunti.
-
-Formato tipico CSV:
-
-```csv
-question_id,question_text,source
-1,"Qual è l'argomento?","input"
+# API Keys
+SERPAPI_API_KEY=your_api_key_here
 ```
 
-## Testing rapido
+### Configurazione LLM (src/core/config.py)
 
-1. Verifica che l'API risponda:
+```python
+# Context window (importante per memoria conversazione)
+LLM_NUM_CTX = 16384  # Default: 16K tokens
+
+# Temperatura (creatività)
+LLM_TEMPERATURE = 0.1  # Bassa per risposte precise
+
+# Keep-alive modello in memoria
+LLM_KEEP_ALIVE = "4h"
+```
+
+### Configurazione Prompts (src/core/prompts.yaml)
+
+Tutti i prompt dell'agente sono configurabili via YAML:
+
+```yaml
+agent:
+  system_prompt: |
+    Sei un assistente finanziario esperto...
+
+tools:
+  web_search:
+    description: "Cerca informazioni aggiornate sul web..."
+  stock_scoring:
+    description: "Analizza un titolo azionario..."
+```
+
+## Architettura
+
+### Flusso delle richieste
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   NiceGUI UI    │────▶│    FastAPI      │────▶│   LangGraph     │
+│   (Browser)     │◀────│    Backend      │◀────│   Agent         │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │                        │
+                               ▼                        ▼
+                        ┌─────────────────┐     ┌─────────────────┐
+                        │   PostgreSQL    │     │   Tool Chain    │
+                        │   (Sessions)    │     │                 │
+                        └─────────────────┘     ├─────────────────┤
+                                                │ • web_search    │
+                                                │ • read_kb       │
+                                                │ • write_kb      │
+                                                │ • stock_scoring │
+                                                └─────────────────┘
+                                                        │
+                                        ┌───────────────┼───────────────┐
+                                        ▼               ▼               ▼
+                                 ┌───────────┐  ┌───────────┐  ┌───────────┐
+                                 │  SerpAPI  │  │  Qdrant   │  │  yfinance │
+                                 │  (Web)    │  │  (Vector) │  │  (Stocks) │
+                                 └───────────┘  └───────────┘  └───────────┘
+```
+
+### Tool disponibili
+
+| Tool | Descrizione | Utilizzo |
+|------|-------------|----------|
+| `web_search_tool` | Ricerca Google via SerpAPI | Notizie recenti, eventi |
+| `read_from_kb_tool` | Lettura da Knowledge Base | Info concettuali, procedure |
+| `write_to_kb_tool` | Scrittura su Knowledge Base | Definizioni, linee guida |
+| `stock_scoring_tool` | Analisi fondamentale titoli | Score BUY/HOLD/SELL |
+
+### Pattern architetturali
+
+- **Async-first**: Tutto il codice è asincrono (asyncio, SQLAlchemy async)
+- **Factory Pattern**: I client async vengono creati dentro le funzioni per evitare conflitti di event loop
+- **Clean Architecture**: Separazione tra UI, API, servizi e core business logic
+- **Dependency Injection**: FastAPI Depends per gestione sessioni DB
+
+## API Endpoints
+
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/conversations/` | Lista conversazioni |
+| POST | `/api/conversations/` | Nuova conversazione |
+| GET | `/api/conversations/{id}/messages/` | Messaggi conversazione |
+| POST | `/api/conversations/{id}/messages/` | Nuovo messaggio |
+
+## Sviluppo
+
+### Aggiungere dipendenze
 
 ```bash
-curl http://localhost:8000/
+uv pip install <package>
+uv pip freeze > requirements.txt
 ```
 
-2. Apri Streamlit e testa le pagine di caricamento e generazione.
+### Linting
+
+```bash
+ruff check src/
+ruff format src/
+```
+
+### Test
+
+```bash
+pytest tests/
+```
+
+## Docker Services
+
+| Servizio | Porta | Descrizione |
+|----------|-------|-------------|
+| app | 8000 | FastAPI + NiceGUI |
+| ollama | 11434 | LLM locale |
+| qdrant | 6333, 6334 | Vector database |
+| postgres_db | 5432 | Database relazionale |
 
 ## Contributi
 
-Se vuoi contribuire:
+1. Apri una issue descrivendo il miglioramento o bug
+2. Crea una branch per la tua feature
+3. Apri una pull request
 
-1. Apri una issue descrivendo il miglioramento o bug.
-2. Crea una branch per la tua feature e apri una pull request.
+## Licenza
 
-Linee guida:
-- Mantieni le dipendenze aggiornate e documenta eventuali passi di setup specifici.
-- Aggiungi test minimi per la logica di business quando modifichi `src/core/services`.
+**Non-Commercial License (CC BY-NC 4.0)**
 
-## Contatti
+Questo software è rilasciato sotto licenza Creative Commons Attribution-NonCommercial 4.0 International.
 
-Per domande o chiarimenti apri un'issue o inviami un messaggio nel repository.
+✅ **Permesso**:
+- Uso personale e educativo
+- Modifica e redistribuzione (con attribuzione)
+- Uso in progetti di ricerca non commerciali
+
+❌ **Vietato**:
+- Uso commerciale o a scopo di lucro
+- Vendita del software o derivati
+- Integrazione in prodotti/servizi commerciali
+
+Per uso commerciale, contattare l'autore per una licenza separata.
+
+Maggiori info: https://creativecommons.org/licenses/by-nc/4.0/
 
 ---
 
-Versione: aggiornata il 2025-10-11
-
-
-## Nota Architetturale: Factory Pattern vs. Singleton (Gestione Event Loop)
-
-Si potrebbe essere tentati di ottimizzare il codice usando il **Pattern Singleton** (un'istanza unica e globale) per i client dei servizi, come `OllamaService` o `VectorStoreService`, istanziandoli una sola volta a livello di modulo (es. in `agent_tools.py`).
-
-Tuttavia, nel contesto di questa specifica applicazione (Streamlit + LangGraph + `asyncio`), questo approccio **causa un errore critico: `Event loop is closed`**.
-
-### Spiegazione del Problema
-
-1.  **Streamlit** e **LangGraph** (con `nest_asyncio`) gestiscono gli event loop `asyncio` in modo molto complesso e separato.
-2.  Un client **asincrono** (come `OllamaService`, che usa `httpx.AsyncClient`) si "aggancia" all'event loop nel momento in cui viene creato.
-3.  Se creato come Singleton (globalmente), si aggancia all'event loop principale di Streamlit.
-4.  Quando un utente invia un messaggio, la chiamata al grafo (`asyncio.run(app.ainvoke(...))`) viene eseguita in un contesto di event loop diverso (o annidato).
-5.  Il tentativo di usare un client (agganciato al loop A) all'interno di un'esecuzione (che gira sul loop B) porta a un conflitto e all'errore `Event loop is closed`.
-
-### La Soluzione Adottata: Factory Pattern
-
-Per garantire la stabilità e prevenire conflitti di loop:
-* I client dei servizi (specialmente quelli `async` come `OllamaService`) **devono** essere istanziati *all'interno* delle funzioni `@tool` che li utilizzano.
-* Questo approccio (noto come **Factory Pattern**) assicura che l'istanza del client (es. `ollama_cli`) viva e muoia interamente sullo stesso event loop che sta eseguendo la chiamata al tool.
-* Anche se questo significa ricreare l'oggetto client a ogni chiamata, è l'architettura **più sicura e robusta** per questo specifico stack tecnologico.
+**Versione**: 2.1.0  
+**Ultimo aggiornamento**: 2026-02-05  
+**Autore**: Vincenzo

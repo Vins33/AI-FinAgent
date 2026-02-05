@@ -1,93 +1,121 @@
-# Percorso file: src/core/agent_tools.py
-# (Versione corretta che istanzia i client all'interno dei tool)
+# src/core/agent_tools.py
+"""LangChain tools for the financial agent."""
 
 import asyncio
+import json
 import uuid
 
 from langchain.tools import tool
 from pydantic import BaseModel, Field
 
+from src.services.financial import StockAnalysisSchema, analyze_stock_sync
 from src.services.knowledge import google_search
 from src.services.llm import OllamaService
 from src.services.vector_store import VectorStoreService
 
 
 class WebSearchSchema(BaseModel):
-    """Schema per il tool di ricerca web."""
-    query: str = Field(description="La stringa di ricerca ottimizzata da inviare a Google.")
+    """Schema for web search tool."""
+
+    query: str = Field(description="The search query to send to Google.")
+
 
 class KBReadSchema(BaseModel):
-    """Schema per il tool di lettura dalla Knowledge Base."""
-    query: str = Field(description="La domanda o l'argomento da cercare nel database vettoriale interno (KB).")
+    """Schema for KB read tool."""
+
+    query: str = Field(description="The query to search in the knowledge base.")
+
 
 class KBWriteSchema(BaseModel):
-    """Schema per il tool di scrittura nella Knowledge Base."""
-    content: str = Field(description="L'informazione testuale o il fatto da salvare e vettorializzare nella KB.")
+    """Schema for KB write tool."""
 
-@tool(args_schema=WebSearchSchema)
+    content: str = Field(description="The content to save to the knowledge base.")
+
+
+@tool("web_search_tool", args_schema=WebSearchSchema)
 async def web_search_tool(query: str) -> str:
     """
-    Usa questo tool per cercare informazioni aggiornate o eventi recenti sul web tramite Google.
-    Non usarlo per informazioni già presenti nella Knowledge Base.
+    Search for updated information on the web via Google.
+    Use this for recent news, events, or time-sensitive data.
+    Maximum 2 calls per request.
     """
-    print(f"--- TOOL: Eseguo web_search_tool (Query: {query}) ---")
+    print(f"--- TOOL: web_search_tool (Query: {query}) ---")
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, google_search, query, 1)
-        print(result)
         return result
     except Exception as e:
-        return f"Errore durante l'esecuzione della ricerca: {str(e)}"
+        return f"Search error: {str(e)}"
 
 
-@tool(args_schema=KBReadSchema)
+@tool("read_from_kb_tool", args_schema=KBReadSchema)
 async def read_from_kb_tool(query: str) -> str:
     """
-    Usa questo tool per recuperare informazioni precedentemente salvate
-    dalla Knowledge Base (KB) vettoriale interna.
+    Read information from the internal knowledge base.
+    Use this for conceptual, procedural, or stable information.
     """
-    print(f"--- TOOL: Eseguo read_from_kb_tool (Query: {query}) ---")
-
-    ollama_cli = OllamaService()
-    vector_store_cli = VectorStoreService()
-
+    print(f"--- TOOL: read_from_kb_tool (Query: {query}) ---")
     try:
-        # 1. Crea l'embedding
-        embedding = await ollama_cli.create_embedding(query)
-        if not embedding:
-            return "Errore: impossibile creare l'embedding per la query."
+        ollama = OllamaService()
+        vector_store = VectorStoreService()
 
-        context = await vector_store_cli.search(embedding, limit=1)
+        embedding = await ollama.create_embedding(query)
+        if not embedding:
+            return "Error: Could not create embedding."
+
+        context = await vector_store.search(embedding, limit=1)
         return context
     except Exception as e:
-        return f"Errore durante la lettura dal Vector DB: {str(e)}"
+        return f"KB read error: {str(e)}"
 
 
-@tool(args_schema=KBWriteSchema)
+@tool("write_to_kb_tool", args_schema=KBWriteSchema)
 async def write_to_kb_tool(content: str) -> str:
     """
-    Usa questo tool per salvare permanentemente (scrivere) un nuovo fatto o un'informazione
-    nella Knowledge Base (KB) vettoriale interna per recuperi futuri.
+    Save information to the internal knowledge base.
+    Use for reusable definitions, guidelines, or stable information.
+    Do NOT save time-sensitive data like prices or news.
     """
-    print(f"--- TOOL: Eseguo write_to_kb_tool (Content: {content[:30]}...) ---")
-
-    ollama_cli = OllamaService()
-    vector_store_cli = VectorStoreService()
-
+    print(f"--- TOOL: write_to_kb_tool (Content: {content[:30]}...) ---")
     try:
-        embedding = await ollama_cli.create_embedding(content)
+        ollama = OllamaService()
+        vector_store = VectorStoreService()
+
+        embedding = await ollama.create_embedding(content)
         if not embedding:
-            return "Errore: impossibile creare l'embedding per il contenuto."
+            return "Error: Could not create embedding."
 
-        point_id = uuid.uuid4().int & (1<<63)-1
-
-        await vector_store_cli.add_context(
-            question_id=point_id,
-            embedding=embedding,
-            text=content
+        point_id = uuid.uuid4().int & ((1 << 63) - 1)
+        await vector_store.add_context(
+            question_id=point_id, embedding=embedding, text=content
         )
-        return f"Informazione salvata con successo nella KB (ID: {point_id})."
+        return f"Information saved to KB (ID: {point_id})."
     except Exception as e:
-        return f"Errore durante la scrittura sul Vector DB: {str(e)}"
+        return f"KB write error: {str(e)}"
 
-available_tools_list = [web_search_tool, read_from_kb_tool, write_to_kb_tool]
+
+@tool("stock_scoring_tool", args_schema=StockAnalysisSchema)
+async def stock_scoring_tool(ticker: str) -> str:
+    """
+    Calculate a stock score (BUY/HOLD/SELL) using fundamental indicators.
+    Metrics: P/E, ROE, D/E, Beta, Dividend Yield, Growth, EV/EBITDA.
+    Returns JSON with metrics, score, and decision.
+    """
+    print(f"--- TOOL: stock_scoring_tool (Ticker: {ticker}) ---")
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, analyze_stock_sync, ticker)
+        return json.dumps(result, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps(
+            {"ticker": ticker, "error": f"Analysis error: {str(e)}"},
+            ensure_ascii=False,
+        )
+
+
+available_tools_list = [
+    web_search_tool,
+    read_from_kb_tool,
+    write_to_kb_tool,
+    stock_scoring_tool,
+]
