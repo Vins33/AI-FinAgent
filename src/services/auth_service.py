@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import settings
 from src.core.security import get_password_hash, verify_password
 from src.services.auth_models import User, UserRole
 
@@ -121,8 +122,8 @@ async def ensure_sysadmin_exists(session: AsyncSession) -> None:
         # Create default sysadmin
         await create_user(
             session,
-            username="admin",
-            email="admin@example.com",
-            password="Fin@nci@l_Ag3nt_2026!",  # Secure default - change in production!
+            username=settings.SYSADMIN_USERNAME,
+            email=settings.SYSADMIN_EMAIL,
+            password=settings.SYSADMIN_PASSWORD,
             role=UserRole.SYSADMIN,
         )
