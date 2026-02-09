@@ -41,9 +41,10 @@ logger = get_logger("tools")
 @tool("web_search_tool", args_schema=WebSearchSchema)
 async def web_search_tool(query: str) -> str:
     """
-    Search for updated information on the web via Google.
-    Use this for recent news, events, or time-sensitive data.
-    Maximum 2 calls per request.
+    Use this tool to search the web for up-to-date information, news, or events that cannot be found in the
+    knowledge base or other tools. Use only if the user requests recent or time-sensitive data, or if you cannot
+    answer from internal sources. Never invent information. Maximum 2 calls per user request. Always answer in
+    the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "web_search_tool", "query": query})
     try:
@@ -59,8 +60,9 @@ async def web_search_tool(query: str) -> str:
 @tool("read_from_kb_tool", args_schema=KBReadSchema)
 async def read_from_kb_tool(query: str) -> str:
     """
-    Read information from the internal knowledge base.
-    Use this for conceptual, procedural, or stable information.
+    Use this tool to retrieve conceptual, procedural, or stable information from the internal knowledge base.
+    Always try this tool before using web search for general knowledge questions.
+    Never invent information. Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "read_from_kb_tool", "query": query})
     try:
@@ -82,9 +84,8 @@ async def read_from_kb_tool(query: str) -> str:
 @tool("write_to_kb_tool", args_schema=KBWriteSchema)
 async def write_to_kb_tool(content: str) -> str:
     """
-    Save information to the internal knowledge base.
-    Use for reusable definitions, guidelines, or stable information.
-    Do NOT save time-sensitive data like prices or news.
+    Use this tool to save reusable definitions, guidelines, or stable information to the internal knowledge base.
+    Never use it for time-sensitive data such as prices or news. Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "write_to_kb_tool", "content_length": len(content)})
     try:
@@ -96,9 +97,7 @@ async def write_to_kb_tool(content: str) -> str:
             return "Error: Could not create embedding."
 
         point_id = uuid.uuid4().int & ((1 << 63) - 1)
-        await vector_store.add_context(
-            question_id=point_id, embedding=embedding, text=content
-        )
+        await vector_store.add_context(question_id=point_id, embedding=embedding, text=content)
         logger.debug("Tool completed", extra={"tool_name": "write_to_kb_tool", "point_id": point_id})
         return f"Information saved to KB (ID: {point_id})."
     except Exception as e:
@@ -109,9 +108,9 @@ async def write_to_kb_tool(content: str) -> str:
 @tool("stock_scoring_tool", args_schema=StockAnalysisSchema)
 async def stock_scoring_tool(ticker: str) -> str:
     """
-    Calculate a stock score (BUY/HOLD/SELL) using fundamental indicators.
-    Metrics: P/E, ROE, D/E, Beta, Dividend Yield, Growth, EV/EBITDA.
-    Returns JSON with metrics, score, and decision.
+    Use this tool to calculate a BUY/HOLD/SELL score for a stock using fundamental indicators (P/E, ROE, D/E, Beta,
+    Dividend Yield, Growth, EV/EBITDA). Never invent or estimate scores. Always call this tool for stock ratings.
+    Return the result as JSON. Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "stock_scoring_tool", "ticker": ticker})
     try:
@@ -130,9 +129,9 @@ async def stock_scoring_tool(ticker: str) -> str:
 @tool("stock_price_tool", args_schema=StockPriceSchema)
 async def stock_price_tool(ticker: str, period: str = "1mo") -> str:
     """
-    Get current stock price and historical data.
-    Returns price, change %, period stats (high/low), and trend (BULLISH/BEARISH/NEUTRAL).
-    Periods: 1d, 5d, 1mo, 3mo, 6mo, 1y, 5y, max.
+    Use this tool to get the current price, historical data, and trend for a stock. Always use this tool for price,
+    percentage change, or trend questions. Never invent or estimate prices. If the user does not specify a period,
+    use the default "1mo". Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "stock_price_tool", "ticker": ticker, "period": period})
     try:
@@ -147,9 +146,8 @@ async def stock_price_tool(ticker: str, period: str = "1mo") -> str:
 @tool("compare_stocks_tool", args_schema=CompareStocksSchema)
 async def compare_stocks_tool(tickers: list[str]) -> str:
     """
-    Compare 2-5 stocks side by side.
-    Returns comparison of P/E, ROE, Market Cap, Dividend Yield, Beta.
-    Also provides rankings: lowest P/E, highest ROE, largest market cap.
+    Use this tool to compare 2-5 stocks side by side on key metrics (P/E, ROE, Market Cap, Dividend Yield, Beta, etc.).
+      Never invent or estimate comparison data. Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "compare_stocks_tool", "tickers": tickers})
     try:
@@ -164,9 +162,9 @@ async def compare_stocks_tool(tickers: list[str]) -> str:
 @tool("dividend_analysis_tool", args_schema=DividendAnalysisSchema)
 async def dividend_analysis_tool(ticker: str) -> str:
     """
-    Analyze dividend history and metrics for a stock.
-    Returns: dividend yield, payout ratio, ex-dividend date, YoY growth, history.
-    Best for income-focused investors analyzing dividend stocks.
+    Use this tool to analyze the dividend history and metrics for a stock (dividend yield, payout ratio,
+    ex-dividend date,    YoY growth, history).
+    Never invent or estimate dividend data. Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "dividend_analysis_tool", "ticker": ticker})
     try:
@@ -181,8 +179,9 @@ async def dividend_analysis_tool(ticker: str) -> str:
 @tool("company_profile_tool", args_schema=CompanyProfileSchema)
 async def company_profile_tool(ticker: str) -> str:
     """
-    Get company profile: sector, industry, country, employees, website, description.
-    Use to understand what a company does and its business context.
+    Use this tool to retrieve the official company profile (sector, industry, country, employees, website, description).
+    Always use this tool to verify or find a ticker from a company name. Never invent or guess company data.
+    Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "company_profile_tool", "ticker": ticker})
     try:
@@ -197,9 +196,9 @@ async def company_profile_tool(ticker: str) -> str:
 @tool("stock_news_tool", args_schema=StockNewsSchema)
 async def stock_news_tool(ticker: str) -> str:
     """
-    Get recent news headlines for a stock from financial sources.
-    Returns last 5 news with title, publisher, link.
-    Use for sentiment analysis or recent events affecting the stock.
+    Use this tool to get the latest 5 news headlines for a stock from financial sources.
+    Use for sentiment analysis or recent events. Never invent or summarize news from memory.
+    Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "stock_news_tool", "ticker": ticker})
     try:
@@ -214,9 +213,10 @@ async def stock_news_tool(ticker: str) -> str:
 @tool("technical_indicators_tool", args_schema=TechnicalIndicatorsSchema)
 async def technical_indicators_tool(ticker: str, period: str = "3mo") -> str:
     """
-    Calculate technical indicators: SMA (20/50/200), RSI (14), volume analysis.
-    Returns support/resistance levels and RSI signal (OVERSOLD/OVERBOUGHT/NEUTRAL).
-    Use for technical analysis and timing entry/exit points.
+    Use this tool to calculate technical indicators (SMA, RSI,
+    volume analysis, support/resistance, RSI signal) for a stock.
+    Never invent or estimate technical data. If the user does not specify a period, use the default "3mo".
+    Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "technical_indicators_tool", "ticker": ticker, "period": period})
     try:
@@ -231,9 +231,9 @@ async def technical_indicators_tool(ticker: str, period: str = "3mo") -> str:
 @tool("earnings_calendar_tool", args_schema=EarningsCalendarSchema)
 async def earnings_calendar_tool(ticker: str) -> str:
     """
-    Get earnings calendar: next earnings date, EPS history, surprise %.
-    Use to plan trades around earnings announcements.
-    Returns trailing and forward EPS estimates.
+    Use this tool to get the earnings calendar for a stock (next earnings date, EPS history, surprise %).
+    Always use this tool for earnings-related questions. Never invent or estimate earnings data.
+    Always answer in the user's language.
     """
     logger.info("Tool invoked", extra={"tool_name": "earnings_calendar_tool", "ticker": ticker})
     try:
